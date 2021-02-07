@@ -9,8 +9,6 @@ Projektet påvisar kunskap och intresse i simulering, numeriska metoder och graf
 -tillämpad linjär algebra (med) <br/>
 -intrinsics (SIMD-instruktioner)
 
-![alt text](/Pics/three.PNG)
-
 Detta skapades parallellt med mina studier i kursen SF1546 på kth.
 
 
