@@ -661,11 +661,11 @@ public:
 };
 
 
-
 struct Character {
 	unsigned int TextureID;               // ID handle of the glyph texture
 	struct { int32_t x, y; } size, bearing, advance; // Size of glyph, offset from baseline to left/top of glyph, offset to advance to next glyph
 };
+
 
 class UI {
 	float height;
@@ -736,8 +736,6 @@ public:
 	float get_height_rel() {
 		return *height_rel;
 	}
-
-
 
 	void init_characters() {
 		glUseProgram(font_shader.get_id());
@@ -954,7 +952,12 @@ public:
 
 		glEnable(GL_DEPTH_TEST);
 	}
+
+	uint32_t UI_func() {
+
+	}
 };
+
 
 enum WIDGET_ALIGNMENT_VERTICAL {
 	WIDGET_ALIGNMENT_BOTTOM_V = 0,
@@ -986,10 +989,24 @@ enum WIDGET_TEXT_ALIGNMENT_VERTICAL {
 	WIDGET_TEXT_ALIGNMENT_CENTER_V = 2,
 };
 
-enum WIDGET_SIZE {
-	WIDGET_WRAP_TEXT = 0,
-	WIDGET_SET_SIZE = 1,
+enum WIDGET_FLAGS {
+	WIDGET_FLAG_NORMAL = 0,
+	WIDGET_FLAG_DROPDOWN_DELTA = 1,
 };
+
+enum WIDGET_RETURN_STATE {
+	WIDGET_RETURN_STATE_PASSIVE = 0,
+	WIDGET_RETURN_STATE_HOVER = 1,
+	WIDGET_RETURN_STATE_ACTIVE = 2,
+	WIDGET_RETURN_STATE_ACTIVATED = 3,
+	WIDGET_RETURN_STATE_LOCKED = 4,
+};
+
+enum WIDGET_STATE {
+	WIDGET_STATE_UNLOCKED = 0,
+	WIDGET_STATE_LOCKED = 1,
+};
+
 
 #define COLOR_EXTRA_BLACK	vec4{0.0, 0.0, 0.0, 1.0}
 #define COLOR_BLACK			vec4{0.1, 0.1, 0.1, 1.0}
@@ -1011,40 +1028,41 @@ enum WIDGET_SIZE {
 #define COLOR_GRAY_9		vec4{0.9, 0.9, 0.9, 1.0}
 #define COLOR_BLACK			vec4{1.0, 1.0, 1.0, 1.0}
 
-void widget_do_nothing(void) {
-	return;
-}
 
 class Widget {
 public:
 	struct {
 		float left, right, up, down;
 	} pos; // Pixel position of edges of widget
-	WIDGET_ALIGNMENT_HORIZONTAL alignment_horizontal_type;
-	WIDGET_ALIGNMENT_VERTICAL alignment_vertical_type;
-	WIDGET_SIZE size_type;
 
 	struct {
 		float left, right, up, down;
 	} border; // Border widths
-	WIDGET_BORDER_ALIGNMENT border_alignment_type;
 
 	std::string text;
 	struct {
 		float left, right, up, down;
 	} text_alignment; // text alignment to widget
-	WIDGET_TEXT_ALIGNMENT_HORIZONTAL text_alignment_horizontal_type;
-	WIDGET_TEXT_ALIGNMENT_VERTICAL text_alignment_vertical_type;
 
 	struct {
-		vec4 passive, active, hover;
+		vec4 passive, active, hover, locked;
 	} background_color, border_color, text_color;
 
+	WIDGET_TEXT_ALIGNMENT_HORIZONTAL text_alignment_horizontal_type;
+	WIDGET_TEXT_ALIGNMENT_VERTICAL text_alignment_vertical_type;
+	WIDGET_BORDER_ALIGNMENT border_alignment_type;
+	WIDGET_ALIGNMENT_HORIZONTAL alignment_horizontal_type;
+	WIDGET_ALIGNMENT_VERTICAL alignment_vertical_type;
+	WIDGET_FLAGS flag_type;
+	WIDGET_STATE state_type;
+
+
+
 	Widget() :
-		pos{ 0., 0., 0., 0. }, border{ 0., 0., 0., 0. }, border_alignment_type(WIDGET_BORDER_OUTSIDE), size_type(WIDGET_WRAP_TEXT),
-		alignment_horizontal_type(WIDGET_ALIGNMENT_LEFT_H), alignment_vertical_type(WIDGET_ALIGNMENT_TOP_V),
-		text(""), text_alignment{ 0., 0., 0., 0. }, text_alignment_horizontal_type(WIDGET_TEXT_ALIGNMENT_LEFT_H),text_alignment_vertical_type(WIDGET_TEXT_ALIGNMENT_BOTTOM_V),
-		background_color{ COLOR_GRAY_2, COLOR_THEME, COLOR_GRAY_3 }, border_color{ COLOR_GRAY_6, COLOR_GRAY_4, COLOR_GRAY_8 }, text_color{ COLOR_GRAY_8, COLOR_GRAY_7, COLOR_GRAY_9 }
+		pos{ 0., 0., 0., 0. }, border{ 0., 0., 0., 0. }, border_alignment_type(WIDGET_BORDER_OUTSIDE), flag_type(WIDGET_FLAG_NORMAL), state_type(WIDGET_STATE_UNLOCKED),
+		alignment_horizontal_type(WIDGET_ALIGNMENT_LEFT_H), alignment_vertical_type(WIDGET_ALIGNMENT_CENTER_V),
+		text(""), text_alignment{ 0., 0., 0., 0. }, text_alignment_horizontal_type(WIDGET_TEXT_ALIGNMENT_CENTER_H), text_alignment_vertical_type(WIDGET_TEXT_ALIGNMENT_CENTER_V),
+		background_color{ COLOR_GRAY_2, COLOR_THEME, COLOR_GRAY_3, COLOR_GRAY_2 }, border_color{ COLOR_GRAY_6, COLOR_GRAY_4, COLOR_GRAY_8, COLOR_GRAY_6 }, text_color{ COLOR_GRAY_8, COLOR_GRAY_7, COLOR_GRAY_9, COLOR_GRAY_6 }
 	{}
 
 	~Widget() {}
@@ -1084,22 +1102,44 @@ public:
 		text_alignment.up = up / (pos.up - pos.down);
 	}
 
+	void set_below_widget(Widget* widget) {
+		set_pos(0, pos.right - pos.left, 0, pos.up - pos.down);
+		set_pos(widget->pos.left, widget->pos.left + pos.right, widget->pos.up, widget->pos.up + pos.up);
+
+	}
+
+	void set_above_widget(Widget* widget) {
+		set_pos(0, pos.right - pos.left, 0, pos.up - pos.down);
+		set_pos(widget->pos.left, widget->pos.left + pos.right, widget->pos.down - pos.up, widget->pos.down);
+	}
+
+	void set_beside_widget(Widget* widget) {
+		set_pos(0, pos.right - pos.left, 0, pos.up - pos.down);
+		set_pos(widget->pos.right, widget->pos.right + pos.right, widget->pos.down, widget->pos.down + pos.up);
+	}
+
+	void set_opposite_widget(Widget* widget) {
+		set_pos(0, pos.right - pos.left, 0, pos.up - pos.down);
+		set_pos(widget->pos.left - pos.right, widget->pos.left, widget->pos.down, widget->pos.down + pos.up);
+	}
+
 	int widget_p = 0;
 	int widget_c = 0;
-	void draw_widget(UI* ui, uint32_t lclick, uint32_t rclick, float x, float y, void(*f)(void)) {
+	WIDGET_RETURN_STATE draw_widget(UI* ui, uint32_t lclick, uint32_t rclick, float x, float y) {
+		WIDGET_RETURN_STATE return_state = WIDGET_RETURN_STATE_PASSIVE;
 		float width = ui->get_width_rel();
 		float height = ui->get_height_rel();
 		float left = pos.left, right = pos.right, up = pos.up, down = pos.down;
-		if(alignment_horizontal_type == WIDGET_ALIGNMENT_RIGHT_H) left = width - pos.right;
-		if(alignment_horizontal_type == WIDGET_ALIGNMENT_CENTER_H) left = pos.left + 0.5*(width - pos.right);
-		if(alignment_horizontal_type == WIDGET_ALIGNMENT_RIGHT_H) right = width - pos.left;
-		if(alignment_horizontal_type == WIDGET_ALIGNMENT_CENTER_H) right = pos.right + 0.5*(width - pos.right);
-		if(alignment_vertical_type == WIDGET_ALIGNMENT_TOP_V) down = height - pos.up;
-		if(alignment_vertical_type == WIDGET_ALIGNMENT_CENTER_V) down = pos.down + 0.5*(height - pos.down);
-		if(alignment_vertical_type == WIDGET_ALIGNMENT_TOP_V) up = height - pos.down;
-		if(alignment_vertical_type == WIDGET_ALIGNMENT_CENTER_V) up = pos.up + 0.5*(height - pos.down);
+		if (alignment_horizontal_type == WIDGET_ALIGNMENT_RIGHT_H) left = width - pos.right;
+		if (alignment_horizontal_type == WIDGET_ALIGNMENT_CENTER_H) left = pos.left + 0.5*(width - pos.right);
+		if (alignment_horizontal_type == WIDGET_ALIGNMENT_RIGHT_H) right = width - pos.left;
+		if (alignment_horizontal_type == WIDGET_ALIGNMENT_CENTER_H) right = pos.right + 0.5*(width - pos.right);
+		if (alignment_vertical_type == WIDGET_ALIGNMENT_TOP_V) down = height - pos.up;
+		if (alignment_vertical_type == WIDGET_ALIGNMENT_CENTER_V) down = pos.down + 0.5*(height - pos.down);
+		if (alignment_vertical_type == WIDGET_ALIGNMENT_TOP_V) up = height - pos.down;
+		if (alignment_vertical_type == WIDGET_ALIGNMENT_CENTER_V) up = pos.up + 0.5*(height - pos.down);
 
-		if ((left < 0) | (down < 0) | (up > height) | (right > width)) return;
+		if ((left < 0) | (down < 0) | (up > height) | (right > width)) return WIDGET_RETURN_STATE_LOCKED;
 
 		float bo = 0, bi = 0;
 		if (border_alignment_type == WIDGET_BORDER_INSIDE) {
@@ -1118,13 +1158,13 @@ public:
 		float bo_left = left - bo * border.left;
 		float bo_right = right + bo * border.right;
 		float bo_down = down - bo * border.down;
-		float bo_up  = up + bo * border.up;
+		float bo_up = up + bo * border.up;
 
 		float bi_left = left + bi * border.left;
 		float bi_right = right - bi * border.right;
 		float bi_down = down + bi * border.down;
 		float bi_up = up - bi * border.up;
-		
+
 		float b_left = left;
 		float b_right = right;
 		float b_down = down;
@@ -1136,32 +1176,43 @@ public:
 		float t_down = down;
 		float t_up = up;
 
-		vec4 bck_color = vec4{0., 0., 0., 0.};
-		vec4 txt_color = vec4{0., 0., 0., 0.};
-		vec4 brd_color = vec4{0., 0., 0., 0.};
-
-		if (left < x & x < right & down < (height - y) & (height - y) < up) {
-			widget_p = widget_c;
-			if (lclick == GLFW_PRESS) {
-				widget_c = 1;
-				bck_color = background_color.active;
-				txt_color = text_color.active;
-				brd_color = border_color.active;
+		vec4 bck_color = vec4{ 0., 0., 0., 0. };
+		vec4 txt_color = vec4{ 0., 0., 0., 0. };
+		vec4 brd_color = vec4{ 0., 0., 0., 0. };
+		if (state_type == WIDGET_STATE_UNLOCKED) {
+			if (left < x & x < right & down < (height - y) & (height - y) < up) {
+				widget_p = widget_c;
+				if (lclick == GLFW_PRESS) {
+					widget_c = 1;
+					return_state = WIDGET_RETURN_STATE_ACTIVE;
+					bck_color = background_color.active;
+					txt_color = text_color.active;
+					brd_color = border_color.active;
+				}
+				else {
+					widget_c = 0;
+					return_state = WIDGET_RETURN_STATE_HOVER;
+					bck_color = background_color.hover;
+					txt_color = text_color.hover;
+					brd_color = border_color.hover;
+				}
+				if (lclick == GLFW_RELEASE & widget_p != widget_c) {
+					return_state = WIDGET_RETURN_STATE_ACTIVATED;
+				}
 			}
 			else {
-				widget_c = 0;
-				bck_color = background_color.hover;
-				txt_color = text_color.hover;
-				brd_color = border_color.hover;
-			}
-			if (lclick == GLFW_RELEASE & widget_p != widget_c) {
-				printf("CLICK!"); 
+				return_state = WIDGET_RETURN_STATE_PASSIVE;
+				bck_color = background_color.passive;
+				txt_color = text_color.passive;
+				brd_color = border_color.passive;
 			}
 		}
 		else {
-			bck_color = background_color.passive;
-			txt_color = text_color.passive;
-			brd_color = border_color.passive;
+			return_state = WIDGET_RETURN_STATE_LOCKED;
+			bck_color = background_color.locked;
+			txt_color = text_color.locked;
+			brd_color = border_color.locked;
+
 		}
 
 		ui->render_box(b_left, b_up, b_left, b_down, b_right, b_down, b_right, b_up, bck_color);
@@ -1170,9 +1221,7 @@ public:
 		ui->render_box(bi_left, bi_down, bo_left, bo_down, bo_right, bo_down, bi_right, bi_down, brd_color);
 		ui->render_box(bi_right, bi_up, bi_right, bi_down, bo_right, bo_down, bo_right, bo_up, brd_color);
 
-
-
-		if (size_type == WIDGET_WRAP_TEXT) {
+		{
 			t_left = left + text_alignment.left - env.v[0];
 			t_down = down + 4 + text_alignment.down - env.v[1];
 
@@ -1188,18 +1237,18 @@ public:
 			float d_height = m_height - (env.v[3] - env.v[1]) - 4;
 
 			std::vector<std::string> lines;
-			std::string line; 
+			std::string line;
 			for (char c : text) {
 				if (c == '\n') {
 					d_width = m_width - ui->envelope_line(line, scale);
-					if(text_alignment_horizontal_type == WIDGET_TEXT_ALIGNMENT_RIGHT_H) xpos = d_width + t_left;
-					if(text_alignment_horizontal_type == WIDGET_TEXT_ALIGNMENT_LEFT_H) xpos = t_left;
-					if(text_alignment_horizontal_type == WIDGET_TEXT_ALIGNMENT_CENTER_H)  xpos = 0.5*d_width + t_left;
-					if(text_alignment_vertical_type == WIDGET_TEXT_ALIGNMENT_TOP_V) ypos = t_down + dy;
-					if(text_alignment_vertical_type == WIDGET_TEXT_ALIGNMENT_BOTTOM_V) ypos = t_down + d_height + dy;
-					if(text_alignment_vertical_type == WIDGET_TEXT_ALIGNMENT_CENTER_V)  ypos = t_down + 0.5*d_height + dy;
+					if (text_alignment_horizontal_type == WIDGET_TEXT_ALIGNMENT_RIGHT_H) xpos = d_width + t_left;
+					if (text_alignment_horizontal_type == WIDGET_TEXT_ALIGNMENT_LEFT_H) xpos = t_left;
+					if (text_alignment_horizontal_type == WIDGET_TEXT_ALIGNMENT_CENTER_H)  xpos = 0.5*d_width + t_left;
+					if (text_alignment_vertical_type == WIDGET_TEXT_ALIGNMENT_TOP_V) ypos = t_down + dy;
+					if (text_alignment_vertical_type == WIDGET_TEXT_ALIGNMENT_BOTTOM_V) ypos = t_down + d_height + dy;
+					if (text_alignment_vertical_type == WIDGET_TEXT_ALIGNMENT_CENTER_V)  ypos = t_down + 0.5*d_height + dy;
 					ui->render_line(line, xpos, ypos, scale, txt_color);
-					dy -= 14*scale;
+					dy -= 14 * scale;
 					line.clear();
 					continue;
 				}
@@ -1215,9 +1264,7 @@ public:
 			ui->render_line(line, xpos, ypos, scale, txt_color);
 		}
 
-		
-
-
+		return return_state;
 	}
 
 	void wrap_text(UI* ui) {
@@ -1234,6 +1281,9 @@ public:
 
 };
 
+
+
+
 int app_resize = 0;
 void app_size_callback(GLFWwindow* window, int height, int width) {
 	app_resize = 1;
@@ -1249,6 +1299,10 @@ struct body {
 float h = 0.03;
 float time = 0;
 
+enum UI_CODE {
+	UI_CODE_NONE = 0,
+	UI_CODE_EXIT = 1,
+};
 
 class App {
 	GLFWwindow* window;
@@ -1364,6 +1418,131 @@ class App {
 		}
 	}
 
+	Widget theme;
+	Widget exited, floating, minimized, title;
+	void UI_setup() {
+		glfwSetWindowAttrib(window, GLFW_DECORATED, GLFW_FALSE);
+
+		theme.set_border(0, 0., 0, 0.);
+		theme.set_pos(0, 200, 0, 200);
+		theme.set_alignment(5, 5, 2, 2);
+		theme.text = std::string("the");
+		theme.alignment_horizontal_type = WIDGET_ALIGNMENT_RIGHT_H;
+		theme.alignment_vertical_type = WIDGET_ALIGNMENT_TOP_V;
+		theme.border_alignment_type = WIDGET_BORDER_INSIDE;
+		theme.text_alignment_horizontal_type = WIDGET_TEXT_ALIGNMENT_CENTER_H;
+		theme.text_alignment_vertical_type = WIDGET_TEXT_ALIGNMENT_CENTER_V;
+		theme.wrap_text(&ui);
+		
+		// PRIO 1: window functions
+		exited = theme;
+		exited.text = std::string("X");
+		floating = theme;
+		floating.text = std::string("U");
+		floating.set_beside_widget(&exited);
+		minimized = theme;
+		minimized.text = std::string("_");
+		minimized.set_beside_widget(&floating);
+		title = theme;
+		
+		char debug_buffer[256];
+		sprintf(debug_buffer, "mspf: %f", mspf);
+
+		title.text = std::string(debug_buffer);
+		title.wrap_text(&ui);
+		title.alignment_horizontal_type = WIDGET_ALIGNMENT_LEFT_H;
+		title.text_alignment_horizontal_type = WIDGET_TEXT_ALIGNMENT_LEFT_H;
+		title.state_type = WIDGET_STATE_LOCKED;
+
+		// Prio 2: self-aligning drop-down
+
+
+	}
+
+	int double_click_bit = -1;
+	int floating_mode = 0;
+	float screen_x_drag2 = 0.;
+	float screen_y_drag2 = 0.;
+	float screen_x_drag1 = 0.;
+	float screen_y_drag1 = 0.;
+	int pos_x_drag1 = 0.;
+	int pos_y_drag1 = 0.;
+	int pos_x_drag2 = 0.;
+	int pos_y_drag2 = 0.;
+	int mouse_drag0 = 0;
+	int mouse_drag1 = 0;
+	int mouse_drag2 = 0;
+	float timer0 = 0;
+	float timer_bit = 0;
+
+	UI_CODE UI_loop() {
+		ui.render_box(0, height, 0, height - theme.pos.up*2, width, height - theme.pos.up*2, width, height, theme.background_color.passive);
+
+		double mouse_x = 0.;
+		double mouse_y = 0.;
+		glfwGetCursorPos(window, &mouse_x, &mouse_y);
+		uint32_t lclick = glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT);
+		uint32_t rclick = glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT);
+
+		title.draw_widget(&ui, 0, 0, 0, 0);
+		if (exited.draw_widget(&ui, lclick, rclick, mouse_x, mouse_y) == WIDGET_RETURN_STATE_ACTIVATED) return UI_CODE_EXIT;
+		if (floating.draw_widget(&ui, lclick, rclick, mouse_x, mouse_y) == WIDGET_RETURN_STATE_ACTIVATED) {
+			if ((++floating_mode % 2)) {
+				glfwMaximizeWindow(window);
+			}
+			else {
+				glfwRestoreWindow(window);
+			}
+		}
+		if (minimized.draw_widget(&ui, lclick, rclick, mouse_x, mouse_y) == WIDGET_RETURN_STATE_ACTIVATED) glfwIconifyWindow(window);
+		
+		mouse_drag2 = mouse_drag1;
+		if (((0 < mouse_x) & (mouse_x < width) & ((height - theme.pos.up) < (height - mouse_y)) & ((height - mouse_y) < height) & lclick) | (mouse_drag0 & lclick)) {
+			if (mouse_drag1 == 0) {
+				mouse_drag0 = 0;
+				glfwGetWindowPos(window, &pos_x_drag1, &pos_y_drag1);
+				screen_x_drag1 = pos_x_drag1 + mouse_x;
+				screen_y_drag1 = pos_y_drag1 + mouse_y;
+				mouse_drag1 = 1;
+
+				if (timer_bit == 0) {
+					timer0 = glfwGetTime();
+					timer_bit = 1;
+				}
+				else {
+					if (glfwGetTime() - timer0 < 0.22) {
+						if ((++floating_mode % 2)) {
+							glfwMaximizeWindow(window);
+						}
+						else {
+							glfwRestoreWindow(window);
+						}
+					}
+					timer_bit = 0;
+				}
+			}
+
+			if ((mouse_drag1 == 1) & (mouse_drag2 == 1)) {
+				mouse_drag0 = 1;
+				glfwGetWindowPos(window, &pos_x_drag2, &pos_y_drag2);
+				screen_x_drag2 = pos_x_drag2 + mouse_x;
+				screen_y_drag2 = pos_y_drag2 + mouse_y;
+				glfwSetWindowPos(window, pos_x_drag1 - screen_x_drag1 + screen_x_drag2, pos_y_drag1 - screen_y_drag1 + screen_y_drag2);
+			}
+		}
+		else mouse_drag1 = 0;
+		if (glfwGetTime() - timer0 > 0.22) {
+			timer_bit = 0;
+		}
+
+		// det roliga kommer nedan :PPPPP
+
+
+
+
+		return UI_CODE_NONE;
+	}
+
 
 	void size_fun() {
 		int _width, _height;
@@ -1395,6 +1574,10 @@ public:
 
 		FreeImage_DeInitialise();
 	}
+	
+	double lastTime = glfwGetTime();
+	int nbFrames = 0;
+	float mspf = 0;
 
 	int main() {
 
@@ -1411,6 +1594,7 @@ public:
 
 		float zoom = -80.;
 
+
 		float x = 0.;
 		float y = 0.;
 		
@@ -1420,45 +1604,9 @@ public:
 		mat4 mv;
 		vec4 light;
 
-		Widget widget;
-		widget.set_border(1, 0., 1, 0.);
-		widget.set_pos(0, 200, 0, 200);
-		widget.set_alignment(5, 5, 2, 2);
-		widget.text = std::string("123");
-		widget.alignment_horizontal_type = WIDGET_ALIGNMENT_RIGHT_H;
-		widget.alignment_vertical_type = WIDGET_ALIGNMENT_TOP_V;
-		widget.border_alignment_type = WIDGET_BORDER_INSIDE;
-		widget.text_alignment_horizontal_type = WIDGET_TEXT_ALIGNMENT_CENTER_H;
-		widget.text_alignment_vertical_type = WIDGET_TEXT_ALIGNMENT_CENTER_V;
-		widget.wrap_text(&ui);
-
-		Widget widget2;
-		widget2.set_border(1, 0., 1, 0.);
-		widget2.set_pos(0, 200, 0, 200);
-		widget2.set_alignment(5, 5, 2, 2);
-		widget2.text = std::string("123");
-		widget2.alignment_horizontal_type = WIDGET_ALIGNMENT_RIGHT_H;
-		widget2.alignment_vertical_type = WIDGET_ALIGNMENT_TOP_V;
-		widget2.border_alignment_type = WIDGET_BORDER_INSIDE;
-		widget2.text_alignment_horizontal_type = WIDGET_TEXT_ALIGNMENT_CENTER_H;
-		widget2.text_alignment_vertical_type = WIDGET_TEXT_ALIGNMENT_CENTER_V;
-		widget2.wrap_text(&ui);
-		widget2.set_pos(widget.pos.right, widget.pos.right + widget2.pos.right, widget2.pos.down, widget2.pos.up);
-
-		Widget widget3;
-		widget3.set_border(1, 0., 1, 0.);
-		widget3.set_pos(0, 200, 0, 200);
-		widget3.set_alignment(5, 5, 2, 2);
-		widget3.text = std::string("123");
-		widget3.alignment_horizontal_type = WIDGET_ALIGNMENT_RIGHT_H;
-		widget3.alignment_vertical_type = WIDGET_ALIGNMENT_TOP_V;
-		widget3.border_alignment_type = WIDGET_BORDER_INSIDE;
-		widget3.text_alignment_horizontal_type = WIDGET_TEXT_ALIGNMENT_CENTER_H;
-		widget3.text_alignment_vertical_type = WIDGET_TEXT_ALIGNMENT_CENTER_V;
-		widget3.wrap_text(&ui);
-		widget3.set_pos(widget2.pos.right, widget2.pos.right + widget3.pos.right, widget3.pos.down, widget3.pos.up);
-
-
+		UI_setup();
+		int UI_SETUP_RATE = 100;
+		int UI_SETUP_RATEv = 0;
 
 		double mouse_x = 0.;
 		double mouse_y = 0.;
@@ -1467,7 +1615,7 @@ public:
 			if (app_resize) size_fun();
 
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-			glClearColor(0.13, 0.13, 0.14, 1.);
+			glClearColor(0.1, 0.1, 0.16, 1.0);
 
 			time = fmodf(time + 0.01, 314.159265359);
 
@@ -1477,14 +1625,23 @@ public:
 			mat4 mv = matmat_mul(R, translation_matrix(x, y, zoom));
 			light = matvec_mul(mv, vec4{ 0., 0., 0., 1. });
 
+			{
+				double currentTime = glfwGetTime();
+				nbFrames++;
+				if (currentTime - lastTime >= 0.1) { // If last prinf() was more than 1 sec ago
+					// printf and reset timer
+					mspf = 100.0 / double(nbFrames);
+					nbFrames = 0;
+					lastTime += 0.1;
+				}
+			}
 
 			draw_bodies(light, pitch, yaw, x, y, zoom, &P);
 			
-			glfwGetCursorPos(window, &mouse_x, &mouse_y);
+			if (!(UI_SETUP_RATEv++ % UI_SETUP_RATE)) UI_setup();
+			if (UI_loop() == UI_CODE_EXIT) break;
 
-			widget.draw_widget(&ui, glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT), glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT), mouse_x, mouse_y, NULL);
-			widget2.draw_widget(&ui, glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT), glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT), mouse_x, mouse_y, NULL);
-			widget3.draw_widget(&ui, glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT), glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT), mouse_x, mouse_y, NULL);
+			glfwGetCursorPos(window, &mouse_x, &mouse_y);
 
 			if (glfwGetKey(window, GLFW_KEY_ESCAPE)) break;
 			if (glfwGetKey(window, GLFW_KEY_W)) { x -= sin(yaw); y -= cos(yaw); };
