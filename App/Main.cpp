@@ -1,5 +1,8 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
+#include <ft2build.h>
+#include <freetype/freetype.h>
+#include <FreeImage.h>
 
 #include <stdio.h>
 #include <cmath>
@@ -13,6 +16,7 @@
 #include <map>
 #include <unordered_map>
 #include <stack>
+
 
 
 union vec4 {
@@ -95,6 +99,16 @@ mat4 projection_matrix(float w, float h, float f, float n) {
 		0., n / h, 0., 0.,
 		0., 0., (f + n) / (n - f), -1.,
 		0., 0., 2.*f*n / (n - f), 0.
+	};
+	return P;
+}
+
+mat4 orthographic_matrix(float w, float h, float f, float n) {
+	mat4 P = {
+		2. / w, 0., 0., 0.,
+		0., 2. / h, 0., 0.,
+		0., 0., 0., 0.,
+		-1., -1., 0., 1.
 	};
 	return P;
 }
@@ -216,7 +230,6 @@ public:
 
 };
 
-
 std::unordered_map<std::string, uint32_t> programs;
 class program {
 	uint32_t id;
@@ -250,6 +263,7 @@ public:
 		if (find != programs.end()) {
 			if (glIsProgram(find->second)) {
 				id = find->second;
+				return; // Exit if the shader already exists
 			}
 			else {
 				programs.erase(find);
@@ -263,7 +277,7 @@ public:
 		std::unordered_map<int, shader> shaders;
 
 		std::filebuf fb;
-		char file_path[32];
+		char file_path[256];
 		sprintf_s(file_path, "Programs/%s.shader", _name);
 		fb.open(file_path, std::ios::in);
 		std::istream is(&fb);
@@ -346,6 +360,83 @@ public:
 
 };
 
+std::unordered_map<std::string, uint32_t> textures;
+class texture {
+	uint32_t id;
+
+public:
+
+	texture(const char* _name) : id(-1) {
+		make_texture(_name);
+	}
+
+	~texture() {
+		if (id != -1) {
+			glDeleteTextures(1, &id);
+			id = -1;
+		}
+	}
+
+	void make_texture(const char* _name) {
+		int map_id = 0;
+
+		if (id != -1) {
+			glDeleteTextures(1, &id);
+			id = -1;
+		}
+
+
+		auto find = textures.find(_name);
+		if (find != textures.end()) {
+			if (glIsTexture(find->second)) {
+				id = find->second;
+			}
+			else {
+				textures.erase(find);
+				map_id = 1;
+			}
+		}
+		else {
+			map_id = 1;
+		}
+
+		char path[256];
+		sprintf(path, "textures/%s", _name);
+		FIBITMAP* frdata;
+		frdata = FreeImage_Load(FIF_UNKNOWN, path, 0);
+
+		glGenTextures(1, &id);
+		glBindTexture(GL_TEXTURE_2D, id);
+		glTexImage2D(
+			GL_TEXTURE_2D,
+			0,
+			GL_RGBA,
+			FreeImage_GetWidth(frdata),
+			FreeImage_GetHeight(frdata),
+			0,
+			GL_RGBA,
+			GL_UNSIGNED_INT,
+			FreeImage_GetBits(frdata)
+		);
+		// set texture options
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+		glBindTexture(GL_TEXTURE_2D, 0);
+
+		if (map_id) {
+			textures[_name] = id;
+		}
+	}
+
+	uint32_t get_id() {
+		return id;
+	}
+
+};
+
 
 struct _planet_vertex {
 	float nx, ny, nz;
@@ -401,6 +492,7 @@ public:
 		return false;
 	}
 };
+
 
 
 class planet {
@@ -531,6 +623,7 @@ public:
 		glUniformMatrix4fv(planet_shader.get_uniform_location("p"), 1, 0, p.v);
 		glUniform4fv(planet_shader.get_uniform_location("light"), 1, light.v);
 		glUniform1f(planet_shader.get_uniform_location("time"), time);
+		glUniform3f(planet_shader.get_uniform_location("colour"), 0.3*(sinf(radius)+1), 0.3*(sinf(radius/2)+1), 0.5*(tanf(radius)+1));
 
 		glBindVertexArray(vao);
 
@@ -567,6 +660,580 @@ public:
 
 };
 
+
+
+struct Character {
+	unsigned int TextureID;               // ID handle of the glyph texture
+	struct { int32_t x, y; } size, bearing, advance; // Size of glyph, offset from baseline to left/top of glyph, offset to advance to next glyph
+};
+
+class UI {
+	float height;
+	float width;
+	float* height_rel;
+	float* width_rel;
+
+	uint32_t data_id;
+	uint32_t vao;
+
+	FT_Library ft;
+	FT_Face face;
+	program font_shader;
+	program image_shader;
+	program clr_shader;
+
+	std::map<char, Character> Characters;
+
+public:
+	UI(float* _width, float* _height) : width(*_width), height(*_height), width_rel(_width), height_rel(_height), data_id(-1), vao(-1) {
+	}
+
+	void initialize() {
+		font_shader.make_program("font");
+		image_shader.make_program("image");
+		clr_shader.make_program("clr");
+
+		init_characters();
+		glGenVertexArrays(1, &vao);
+		glBindVertexArray(vao);
+
+		glGenBuffers(1, &data_id);
+		glBindBuffer(GL_ARRAY_BUFFER, data_id);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 6 * 4, NULL, GL_DYNAMIC_DRAW);
+
+		glEnableVertexAttribArray(0);
+		glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(float), 0);
+
+		glBindVertexArray(0);
+		glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+		glUseProgram(0);
+	}
+
+	~UI() {
+		if (data_id != -1) {
+			glDeleteBuffers(1, &data_id);
+			data_id = -1;
+		}
+		if (vao != -1) {
+			glDeleteVertexArrays(1, &vao);
+			vao = -1;
+		}
+	}
+
+	float get_width() {
+		return width;
+	}
+
+	float get_width_rel() {
+		return *width_rel;
+	}
+
+	float get_height() {
+		return height;
+	}
+
+	float get_height_rel() {
+		return *height_rel;
+	}
+
+
+
+	void init_characters() {
+		glUseProgram(font_shader.get_id());
+
+		if (FT_Init_FreeType(&ft))
+		{
+			printf("ERROR::FREETYPE: Could not init FreeType Library");
+		}
+
+		if (FT_New_Face(ft, "fonts/tahoma.ttf", 0, &face))
+		{
+			printf("ERROR::FREETYPE: Failed to load font");
+		}
+
+		FT_Set_Pixel_Sizes(face, 0, 12);
+
+		glPixelStorei(GL_UNPACK_ALIGNMENT, 1); // disable byte-alignment restriction
+
+		for (unsigned char c = 0; c < 200; c++)
+		{
+			// load character glyph 
+			if (FT_Load_Char(face, c, FT_LOAD_RENDER))
+			{
+				printf("ERROR::FREETYTPE: Failed to load Glyph");
+				continue;
+			}
+
+			// generate texture
+			unsigned int texture;
+			glGenTextures(1, &texture);
+			glBindTexture(GL_TEXTURE_2D, texture);
+			glTexImage2D(
+				GL_TEXTURE_2D,
+				0,
+				GL_RED,
+				face->glyph->bitmap.width,
+				face->glyph->bitmap.rows,
+				0,
+				GL_RED,
+				GL_UNSIGNED_BYTE,
+				face->glyph->bitmap.buffer
+			);
+			// set texture options
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+			// now store character for later use
+			Character character;
+
+			character.TextureID = texture;
+			character.size.x = face->glyph->bitmap.width;
+			character.size.y = face->glyph->bitmap.rows;
+			character.bearing.x = face->glyph->bitmap_left;
+			character.bearing.y = face->glyph->bitmap_top;
+			character.advance.x = face->glyph->advance.x;
+			character.advance.y = face->glyph->advance.y;
+
+			Characters.insert(std::pair<char, Character>(c, character));
+		}
+		glBindTexture(GL_TEXTURE_2D, 0);
+
+		FT_Done_Face(face);
+		FT_Done_FreeType(ft);
+		
+	}
+
+	// returns envelope
+	float envelope_line(std::string text, float scale)
+	{
+		float dx = 0.;
+
+		for (char c : text) {
+			Character ch = Characters[c];
+			if (c == '\n') {
+				continue;
+			}
+
+			dx += (ch.advance.x >> 6) * scale;
+		}
+		
+		return dx;
+	}
+
+	vec4 envelope_text(std::string text, float scale) {
+		float dy = 0;
+		float dx = 0;
+		vec4 envelope = vec4{ 0, 0, 0, 0 };
+		std::vector<std::string> lines;
+		std::string line;
+		for (char c : text) {
+			if (c == '\n') {
+				float nx = envelope_line(line, scale);
+				if (dx < nx) dx = nx;
+				dy -= 14 * scale;
+				line.clear();
+				continue;
+			}
+			line.push_back(c);
+		}
+		float nx = envelope_line(line, scale);
+		if (dx < nx) dx = nx;
+		return vec4{0, dy, dx, 14 * scale };
+	}
+
+	void render_text(std::string text, float x, float y, float scale, vec4 rgba) {
+		std::vector<std::string> lines;
+		std::string line;
+		for (char c : text) {
+			if (c == '\n') {
+				render_line(line, x, y, scale, rgba);
+				y -= 14 * scale;
+				line.clear();
+				continue;
+			}
+			line.push_back(c);
+		}
+		render_line(line, x, y, scale, rgba);
+	}
+	
+	void render_line(std::string text, float x, float y, float scale, vec4 rgba)
+	{
+		glEnable(GL_CULL_FACE);
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+		glDisable(GL_DEPTH_TEST);
+
+		mat4 p = orthographic_matrix(get_width_rel(), get_height_rel() , 1000, 0.1);
+		glUseProgram(font_shader.get_id());
+		// activate corresponding render state
+		glUniform4fv(font_shader.get_uniform_location("textColor"), 1, rgba.v);
+		glUniformMatrix4fv(font_shader.get_uniform_location("projection"), 1, 0, p.v);
+		glUniform1i(font_shader.get_uniform_location("text"), 0);
+		glActiveTexture(GL_TEXTURE0);
+		glBindVertexArray(vao);
+
+		float dx = 0.;
+		float dy = 0.;
+
+		for (char c : text) {
+			Character ch = Characters[c];
+			if (c == '\n') {
+				continue;
+			}
+
+			float xpos = x + dx + ch.bearing.x * scale;
+			float ypos = y - dy - (ch.size.y - ch.bearing.y) * scale;
+
+			float w = ch.size.x * scale;
+			float h = ch.size.y * scale;
+
+			float vertices[6][4] = {
+				{ xpos,     ypos + h,   0.0f, 0.0f },
+				{ xpos,     ypos,       0.0f, 1.0f },
+				{ xpos + w, ypos,       1.0f, 1.0f },
+				{ xpos,     ypos + h,   0.0f, 0.0f },
+				{ xpos + w, ypos,       1.0f, 1.0f },
+				{ xpos + w, ypos + h,   1.0f, 0.0f }
+			};
+
+			glBindTexture(GL_TEXTURE_2D, ch.TextureID);
+
+			glBindBuffer(GL_ARRAY_BUFFER, data_id);
+			glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices);
+			glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+			glDrawArrays(GL_TRIANGLES, 0, 6);
+
+			dx += (ch.advance.x >> 6) * scale;
+		}
+		glBindTexture(GL_TEXTURE_2D, 0);
+		glBindVertexArray(0);
+		glUseProgram(0);
+
+
+		glEnable(GL_DEPTH_TEST);
+
+	}
+
+	void render_box(float x_a, float y_a, float x_b, float y_b, float x_c, float y_c, float x_d, float y_d, vec4 rgba)
+	{
+		glEnable(GL_CULL_FACE);
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+		glDisable(GL_DEPTH_TEST);
+
+		mat4 p = orthographic_matrix(*width_rel, *height_rel, 1000, 0.1);
+		glUseProgram(clr_shader.get_id());
+		// activate corresponding render state
+		glUniform4fv(clr_shader.get_uniform_location("Color"), 1, rgba.v);
+		glUniformMatrix4fv(clr_shader.get_uniform_location("projection"), 1, 0, p.v);
+		glBindVertexArray(vao);
+
+
+		float vertices[6][4] = {
+			{ x_a, y_a,   0.0f, 0.0f },
+			{ x_b, y_b,   0.0f, 1.0f },
+			{ x_c, y_c,   1.0f, 1.0f },
+			{ x_a, y_a,   0.0f, 0.0f },
+			{ x_c, y_c,   1.0f, 1.0f },
+			{ x_d, y_d,   1.0f, 0.0f }
+		};
+
+		glBindBuffer(GL_ARRAY_BUFFER, data_id);
+		glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices);
+		glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+		glDrawArrays(GL_TRIANGLES, 0, 6);
+
+		glBindTexture(GL_TEXTURE_2D, 0);
+		glBindVertexArray(0);
+		glUseProgram(0);
+
+
+		glEnable(GL_DEPTH_TEST);
+	}
+};
+
+enum WIDGET_ALIGNMENT_VERTICAL {
+	WIDGET_ALIGNMENT_BOTTOM_V = 0,
+	WIDGET_ALIGNMENT_TOP_V = 1,
+	WIDGET_ALIGNMENT_CENTER_V = 2,
+};
+
+enum WIDGET_ALIGNMENT_HORIZONTAL {
+	WIDGET_ALIGNMENT_LEFT_H = 0,
+	WIDGET_ALIGNMENT_RIGHT_H = 1,
+	WIDGET_ALIGNMENT_CENTER_H = 2,
+};
+
+enum WIDGET_BORDER_ALIGNMENT {
+	WIDGET_BORDER_OUTSIDE = 0,
+	WIDGET_BORDER_CENTER = 1,
+	WIDGET_BORDER_INSIDE = 2,
+};
+
+enum WIDGET_TEXT_ALIGNMENT_HORIZONTAL {
+	WIDGET_TEXT_ALIGNMENT_LEFT_H = 0,
+	WIDGET_TEXT_ALIGNMENT_RIGHT_H = 1,
+	WIDGET_TEXT_ALIGNMENT_CENTER_H = 2,
+};
+
+enum WIDGET_TEXT_ALIGNMENT_VERTICAL {
+	WIDGET_TEXT_ALIGNMENT_TOP_V = 0,
+	WIDGET_TEXT_ALIGNMENT_BOTTOM_V = 1,
+	WIDGET_TEXT_ALIGNMENT_CENTER_V = 2,
+};
+
+enum WIDGET_SIZE {
+	WIDGET_WRAP_TEXT = 0,
+	WIDGET_SET_SIZE = 1,
+};
+
+#define COLOR_EXTRA_BLACK	vec4{0.0, 0.0, 0.0, 1.0}
+#define COLOR_BLACK			vec4{0.1, 0.1, 0.1, 1.0}
+#define COLOR_DARK_GRAY		vec4{0.3, 0.3, 0.3, 1.0}
+#define COLOR_GRAY			vec4{0.5, 0.5, 0.5, 1.0}
+#define COLOR_LIGHT_GRAY	vec4{0.7, 0.7, 0.7, 1.0}
+#define COLOR_WHITE			vec4{0.9, 0.9, 0.9, 1.0}
+
+#define COLOR_THEME			vec4{0.35, 0.40, 0.88, 1.0}
+#define COLOR_GRAY_0		vec4{0.0, 0.0, 0.0, 1.0}
+#define COLOR_GRAY_1		vec4{0.1, 0.1, 0.1, 1.0}
+#define COLOR_GRAY_2		vec4{0.2, 0.2, 0.2, 1.0}
+#define COLOR_GRAY_3		vec4{0.3, 0.3, 0.3, 1.0}
+#define COLOR_GRAY_4		vec4{0.4, 0.4, 0.4, 1.0}
+#define COLOR_GRAY_5		vec4{0.5, 0.5, 0.5, 1.0}
+#define COLOR_GRAY_6		vec4{0.6, 0.6, 0.6, 1.0}
+#define COLOR_GRAY_7		vec4{0.7, 0.7, 0.7, 1.0}
+#define COLOR_GRAY_8		vec4{0.8, 0.8, 0.8, 1.0}
+#define COLOR_GRAY_9		vec4{0.9, 0.9, 0.9, 1.0}
+#define COLOR_BLACK			vec4{1.0, 1.0, 1.0, 1.0}
+
+void widget_do_nothing(void) {
+	return;
+}
+
+class Widget {
+public:
+	struct {
+		float left, right, up, down;
+	} pos; // Pixel position of edges of widget
+	WIDGET_ALIGNMENT_HORIZONTAL alignment_horizontal_type;
+	WIDGET_ALIGNMENT_VERTICAL alignment_vertical_type;
+	WIDGET_SIZE size_type;
+
+	struct {
+		float left, right, up, down;
+	} border; // Border widths
+	WIDGET_BORDER_ALIGNMENT border_alignment_type;
+
+	std::string text;
+	struct {
+		float left, right, up, down;
+	} text_alignment; // text alignment to widget
+	WIDGET_TEXT_ALIGNMENT_HORIZONTAL text_alignment_horizontal_type;
+	WIDGET_TEXT_ALIGNMENT_VERTICAL text_alignment_vertical_type;
+
+	struct {
+		vec4 passive, active, hover;
+	} background_color, border_color, text_color;
+
+	Widget() :
+		pos{ 0., 0., 0., 0. }, border{ 0., 0., 0., 0. }, border_alignment_type(WIDGET_BORDER_OUTSIDE), size_type(WIDGET_WRAP_TEXT),
+		alignment_horizontal_type(WIDGET_ALIGNMENT_LEFT_H), alignment_vertical_type(WIDGET_ALIGNMENT_TOP_V),
+		text(""), text_alignment{ 0., 0., 0., 0. }, text_alignment_horizontal_type(WIDGET_TEXT_ALIGNMENT_LEFT_H),text_alignment_vertical_type(WIDGET_TEXT_ALIGNMENT_BOTTOM_V),
+		background_color{ COLOR_GRAY_2, COLOR_THEME, COLOR_GRAY_3 }, border_color{ COLOR_GRAY_6, COLOR_GRAY_4, COLOR_GRAY_8 }, text_color{ COLOR_GRAY_8, COLOR_GRAY_7, COLOR_GRAY_9 }
+	{}
+
+	~Widget() {}
+
+	void set_pos(float left, float right, float down, float up) {
+		pos.left = left;
+		pos.right = right;
+		pos.down = down;
+		pos.up = up;
+	}
+
+	void set_border(float left, float right, float down, float up) {
+		border.left = left;
+		border.right = right;
+		border.down = down;
+		border.up = up;
+	}
+
+	void set_border_p(float left, float right, float down, float up) {
+		border.left = left / (pos.right - pos.left);
+		border.right = right / (pos.right - pos.left);
+		border.down = down / (pos.up - pos.down);
+		border.up = up / (pos.up - pos.down);
+	}
+
+	void set_alignment(float left, float right, float down, float up) {
+		text_alignment.left = left;
+		text_alignment.right = right;
+		text_alignment.down = down;
+		text_alignment.up = up;
+	}
+
+	void set_alignment_p(float left, float right, float down, float up) {
+		text_alignment.left = left / (pos.right - pos.left);
+		text_alignment.right = right / (pos.right - pos.left);
+		text_alignment.down = down / (pos.up - pos.down);
+		text_alignment.up = up / (pos.up - pos.down);
+	}
+
+	int widget_p = 0;
+	int widget_c = 0;
+	void draw_widget(UI* ui, uint32_t lclick, uint32_t rclick, float x, float y, void(*f)(void)) {
+		float width = ui->get_width_rel();
+		float height = ui->get_height_rel();
+		float left = pos.left, right = pos.right, up = pos.up, down = pos.down;
+		if(alignment_horizontal_type == WIDGET_ALIGNMENT_RIGHT_H) left = width - pos.right;
+		if(alignment_horizontal_type == WIDGET_ALIGNMENT_CENTER_H) left = pos.left + 0.5*(width - pos.right);
+		if(alignment_horizontal_type == WIDGET_ALIGNMENT_RIGHT_H) right = width - pos.left;
+		if(alignment_horizontal_type == WIDGET_ALIGNMENT_CENTER_H) right = pos.right + 0.5*(width - pos.right);
+		if(alignment_vertical_type == WIDGET_ALIGNMENT_TOP_V) down = height - pos.up;
+		if(alignment_vertical_type == WIDGET_ALIGNMENT_CENTER_V) down = pos.down + 0.5*(height - pos.down);
+		if(alignment_vertical_type == WIDGET_ALIGNMENT_TOP_V) up = height - pos.down;
+		if(alignment_vertical_type == WIDGET_ALIGNMENT_CENTER_V) up = pos.up + 0.5*(height - pos.down);
+
+		if ((left < 0) | (down < 0) | (up > height) | (right > width)) return;
+
+		float bo = 0, bi = 0;
+		if (border_alignment_type == WIDGET_BORDER_INSIDE) {
+			bo = 0.0;
+			bi = 1.0;
+		}
+		if (border_alignment_type == WIDGET_BORDER_CENTER) {
+			bo = 0.5;
+			bi = 0.5;
+		}
+		if (border_alignment_type == WIDGET_BORDER_OUTSIDE) {
+			bo = 1.0;
+			bi = 0.0;
+		}
+
+		float bo_left = left - bo * border.left;
+		float bo_right = right + bo * border.right;
+		float bo_down = down - bo * border.down;
+		float bo_up  = up + bo * border.up;
+
+		float bi_left = left + bi * border.left;
+		float bi_right = right - bi * border.right;
+		float bi_down = down + bi * border.down;
+		float bi_up = up - bi * border.up;
+		
+		float b_left = left;
+		float b_right = right;
+		float b_down = down;
+		float b_up = up;
+
+		vec4 env = ui->envelope_text(text, 1.0);
+		float t_left = left;
+		float t_right = right;
+		float t_down = down;
+		float t_up = up;
+
+		vec4 bck_color = vec4{0., 0., 0., 0.};
+		vec4 txt_color = vec4{0., 0., 0., 0.};
+		vec4 brd_color = vec4{0., 0., 0., 0.};
+
+		if (left < x & x < right & down < (height - y) & (height - y) < up) {
+			widget_p = widget_c;
+			if (lclick == GLFW_PRESS) {
+				widget_c = 1;
+				bck_color = background_color.active;
+				txt_color = text_color.active;
+				brd_color = border_color.active;
+			}
+			else {
+				widget_c = 0;
+				bck_color = background_color.hover;
+				txt_color = text_color.hover;
+				brd_color = border_color.hover;
+			}
+			if (lclick == GLFW_RELEASE & widget_p != widget_c) {
+				printf("CLICK!"); 
+			}
+		}
+		else {
+			bck_color = background_color.passive;
+			txt_color = text_color.passive;
+			brd_color = border_color.passive;
+		}
+
+		ui->render_box(b_left, b_up, b_left, b_down, b_right, b_down, b_right, b_up, bck_color);
+		ui->render_box(bo_left, bo_up, bo_left, bo_down, bi_left, bi_down, bi_left, bi_up, brd_color);
+		ui->render_box(bo_left, bo_up, bi_left, bi_up, bi_right, bi_up, bo_right, bo_up, brd_color);
+		ui->render_box(bi_left, bi_down, bo_left, bo_down, bo_right, bo_down, bi_right, bi_down, brd_color);
+		ui->render_box(bi_right, bi_up, bi_right, bi_down, bo_right, bo_down, bo_right, bo_up, brd_color);
+
+
+
+		if (size_type == WIDGET_WRAP_TEXT) {
+			t_left = left + text_alignment.left - env.v[0];
+			t_down = down + 4 + text_alignment.down - env.v[1];
+
+			float dy = 0;
+			float scale = 1.;
+
+			float xpos = 0;
+			float ypos = 0;
+
+			float m_width = b_right - b_left - text_alignment.left - text_alignment.right;
+			float m_height = b_up - b_down - text_alignment.up - text_alignment.down;
+			float d_width = 0;
+			float d_height = m_height - (env.v[3] - env.v[1]) - 4;
+
+			std::vector<std::string> lines;
+			std::string line; 
+			for (char c : text) {
+				if (c == '\n') {
+					d_width = m_width - ui->envelope_line(line, scale);
+					if(text_alignment_horizontal_type == WIDGET_TEXT_ALIGNMENT_RIGHT_H) xpos = d_width + t_left;
+					if(text_alignment_horizontal_type == WIDGET_TEXT_ALIGNMENT_LEFT_H) xpos = t_left;
+					if(text_alignment_horizontal_type == WIDGET_TEXT_ALIGNMENT_CENTER_H)  xpos = 0.5*d_width + t_left;
+					if(text_alignment_vertical_type == WIDGET_TEXT_ALIGNMENT_TOP_V) ypos = t_down + dy;
+					if(text_alignment_vertical_type == WIDGET_TEXT_ALIGNMENT_BOTTOM_V) ypos = t_down + d_height + dy;
+					if(text_alignment_vertical_type == WIDGET_TEXT_ALIGNMENT_CENTER_V)  ypos = t_down + 0.5*d_height + dy;
+					ui->render_line(line, xpos, ypos, scale, txt_color);
+					dy -= 14*scale;
+					line.clear();
+					continue;
+				}
+				line.push_back(c);
+			}
+			d_width = m_width - ui->envelope_line(line, scale);
+			if (text_alignment_horizontal_type == WIDGET_TEXT_ALIGNMENT_RIGHT_H) xpos = d_width + t_left;
+			if (text_alignment_horizontal_type == WIDGET_TEXT_ALIGNMENT_LEFT_H) xpos = t_left;
+			if (text_alignment_horizontal_type == WIDGET_TEXT_ALIGNMENT_CENTER_H)  xpos = 0.5*d_width + t_left;
+			if (text_alignment_vertical_type == WIDGET_TEXT_ALIGNMENT_TOP_V) ypos = t_down + dy;
+			if (text_alignment_vertical_type == WIDGET_TEXT_ALIGNMENT_BOTTOM_V) ypos = t_down + d_height + dy;
+			if (text_alignment_vertical_type == WIDGET_TEXT_ALIGNMENT_CENTER_V)  ypos = t_down + 0.5*d_height + dy;
+			ui->render_line(line, xpos, ypos, scale, txt_color);
+		}
+
+		
+
+
+	}
+
+	void wrap_text(UI* ui) {
+		float left = pos.left;
+		float right = pos.right;
+		float up = pos.up;
+		float down = pos.down;
+
+		vec4 env = ui->envelope_text(text, 1.0);
+
+		pos.right = pos.left + text_alignment.left + env.v[2] - env.v[0] + text_alignment.right;
+		pos.up = pos.down + text_alignment.down + env.v[3] - env.v[1] + 4 + text_alignment.up;
+	}
+
+};
+
 int app_resize = 0;
 void app_size_callback(GLFWwindow* window, int height, int width) {
 	app_resize = 1;
@@ -582,11 +1249,14 @@ struct body {
 float h = 0.03;
 float time = 0;
 
+
 class App {
 	GLFWwindow* window;
-	uint32_t width;
-	uint32_t height;
+	float width;
+	float height;
 	float aspect_ratio;
+
+	UI ui;
 
 	std::vector<body> bodies;
 
@@ -646,7 +1316,7 @@ class App {
 		b1->v_n.z += h / 6. * (s1.z + 2. * s2.z + 2. * s3.z + s4.z);
 
 	}
-
+	
 	void body_pos_int(struct body* b1) {
 		b1->p_n.x += h * (b1->v.x);
 		b1->p_n.y += h * (b1->v.y);
@@ -705,7 +1375,7 @@ class App {
 
 
 public:
-	App() : window(NULL), width(1920 * 0.6), height(1080 * 0.6), aspect_ratio((float)width/(float)height) {
+	App() : window(NULL), width(1920 * 0.6), height(1080 * 0.6), ui(&width, &height), aspect_ratio((float)width/(float)height) {
 		glfwInit();
 
 		window = glfwCreateWindow(width, height, "Title", NULL, NULL);
@@ -714,10 +1384,16 @@ public:
 
 		glewInit();
 
+		FreeImage_Initialise();
+
+		ui.initialize();
+
 	}
 
 	~App() {
 		glfwTerminate();
+
+		FreeImage_DeInitialise();
 	}
 
 	int main() {
@@ -744,11 +1420,54 @@ public:
 		mat4 mv;
 		vec4 light;
 
+		Widget widget;
+		widget.set_border(1, 0., 1, 0.);
+		widget.set_pos(0, 200, 0, 200);
+		widget.set_alignment(5, 5, 2, 2);
+		widget.text = std::string("123");
+		widget.alignment_horizontal_type = WIDGET_ALIGNMENT_RIGHT_H;
+		widget.alignment_vertical_type = WIDGET_ALIGNMENT_TOP_V;
+		widget.border_alignment_type = WIDGET_BORDER_INSIDE;
+		widget.text_alignment_horizontal_type = WIDGET_TEXT_ALIGNMENT_CENTER_H;
+		widget.text_alignment_vertical_type = WIDGET_TEXT_ALIGNMENT_CENTER_V;
+		widget.wrap_text(&ui);
+
+		Widget widget2;
+		widget2.set_border(1, 0., 1, 0.);
+		widget2.set_pos(0, 200, 0, 200);
+		widget2.set_alignment(5, 5, 2, 2);
+		widget2.text = std::string("123");
+		widget2.alignment_horizontal_type = WIDGET_ALIGNMENT_RIGHT_H;
+		widget2.alignment_vertical_type = WIDGET_ALIGNMENT_TOP_V;
+		widget2.border_alignment_type = WIDGET_BORDER_INSIDE;
+		widget2.text_alignment_horizontal_type = WIDGET_TEXT_ALIGNMENT_CENTER_H;
+		widget2.text_alignment_vertical_type = WIDGET_TEXT_ALIGNMENT_CENTER_V;
+		widget2.wrap_text(&ui);
+		widget2.set_pos(widget.pos.right, widget.pos.right + widget2.pos.right, widget2.pos.down, widget2.pos.up);
+
+		Widget widget3;
+		widget3.set_border(1, 0., 1, 0.);
+		widget3.set_pos(0, 200, 0, 200);
+		widget3.set_alignment(5, 5, 2, 2);
+		widget3.text = std::string("123");
+		widget3.alignment_horizontal_type = WIDGET_ALIGNMENT_RIGHT_H;
+		widget3.alignment_vertical_type = WIDGET_ALIGNMENT_TOP_V;
+		widget3.border_alignment_type = WIDGET_BORDER_INSIDE;
+		widget3.text_alignment_horizontal_type = WIDGET_TEXT_ALIGNMENT_CENTER_H;
+		widget3.text_alignment_vertical_type = WIDGET_TEXT_ALIGNMENT_CENTER_V;
+		widget3.wrap_text(&ui);
+		widget3.set_pos(widget2.pos.right, widget2.pos.right + widget3.pos.right, widget3.pos.down, widget3.pos.up);
+
+
+
+		double mouse_x = 0.;
+		double mouse_y = 0.;
+
 		while (!glfwWindowShouldClose(window)) {
 			if (app_resize) size_fun();
 
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-			glClearColor(0.13, 0.13, 0.135, 1.);
+			glClearColor(0.13, 0.13, 0.14, 1.);
 
 			time = fmodf(time + 0.01, 314.159265359);
 
@@ -758,7 +1477,14 @@ public:
 			mat4 mv = matmat_mul(R, translation_matrix(x, y, zoom));
 			light = matvec_mul(mv, vec4{ 0., 0., 0., 1. });
 
+
 			draw_bodies(light, pitch, yaw, x, y, zoom, &P);
+			
+			glfwGetCursorPos(window, &mouse_x, &mouse_y);
+
+			widget.draw_widget(&ui, glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT), glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT), mouse_x, mouse_y, NULL);
+			widget2.draw_widget(&ui, glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT), glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT), mouse_x, mouse_y, NULL);
+			widget3.draw_widget(&ui, glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT), glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT), mouse_x, mouse_y, NULL);
 
 			if (glfwGetKey(window, GLFW_KEY_ESCAPE)) break;
 			if (glfwGetKey(window, GLFW_KEY_W)) { x -= sin(yaw); y -= cos(yaw); };
