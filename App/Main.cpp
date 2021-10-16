@@ -998,13 +998,16 @@ enum WIDGET_RETURN_STATE {
 	WIDGET_RETURN_STATE_PASSIVE = 0,
 	WIDGET_RETURN_STATE_HOVER = 1,
 	WIDGET_RETURN_STATE_ACTIVE = 2,
-	WIDGET_RETURN_STATE_ACTIVATED = 3,
-	WIDGET_RETURN_STATE_LOCKED = 4,
+	WIDGET_RETURN_STATE_PRESSED = 3,
+	WIDGET_RETURN_STATE_RELEASED = 4,
+	WIDGET_RETURN_STATE_LOCKED = 5,
 };
 
 enum WIDGET_STATE {
 	WIDGET_STATE_UNLOCKED = 0,
 	WIDGET_STATE_LOCKED = 1,
+	WIDGET_STATE_FLIPPABLE = 2,
+	WIDGET_STATE_DISAPPEARABLE = 3,
 };
 
 
@@ -1055,7 +1058,6 @@ public:
 	WIDGET_ALIGNMENT_VERTICAL alignment_vertical_type;
 	WIDGET_FLAGS flag_type;
 	WIDGET_STATE state_type;
-
 
 
 	Widget() :
@@ -1139,7 +1141,21 @@ public:
 		if (alignment_vertical_type == WIDGET_ALIGNMENT_TOP_V) up = height - pos.down;
 		if (alignment_vertical_type == WIDGET_ALIGNMENT_CENTER_V) up = pos.up + 0.5*(height - pos.down);
 
-		if ((left < 0) | (down < 0) | (up > height) | (right > width)) return WIDGET_RETURN_STATE_LOCKED;
+		if ((left < 0) | (down < 0) | (up > height) | (right > width)) {
+			if (state_type == WIDGET_STATE_DISAPPEARABLE) {
+				return WIDGET_RETURN_STATE_LOCKED;
+			}
+			if (state_type == WIDGET_STATE_FLIPPABLE) {
+				if (right > width) {
+					left = left + pos.left - pos.right;
+					right = right + pos.left - pos.right;
+				}
+				if (down < 0) {
+					up = up + pos.up - pos.down;
+					down = down + pos.up - pos.down;
+				}
+			}
+		}
 
 		float bo = 0, bi = 0;
 		if (border_alignment_type == WIDGET_BORDER_INSIDE) {
@@ -1179,7 +1195,7 @@ public:
 		vec4 bck_color = vec4{ 0., 0., 0., 0. };
 		vec4 txt_color = vec4{ 0., 0., 0., 0. };
 		vec4 brd_color = vec4{ 0., 0., 0., 0. };
-		if (state_type == WIDGET_STATE_UNLOCKED) {
+		if (state_type != WIDGET_STATE_LOCKED) {
 			if (left < x & x < right & down < (height - y) & (height - y) < up) {
 				widget_p = widget_c;
 				if (lclick == GLFW_PRESS) {
@@ -1197,8 +1213,12 @@ public:
 					brd_color = border_color.hover;
 				}
 				if (lclick == GLFW_RELEASE & widget_p != widget_c) {
-					return_state = WIDGET_RETURN_STATE_ACTIVATED;
+					return_state = WIDGET_RETURN_STATE_RELEASED;
 				}
+				if (lclick == GLFW_PRESS & widget_p != widget_c) {
+					return_state = WIDGET_RETURN_STATE_PRESSED;
+				}
+
 			}
 			else {
 				return_state = WIDGET_RETURN_STATE_PASSIVE;
@@ -1280,8 +1300,6 @@ public:
 	}
 
 };
-
-
 
 
 int app_resize = 0;
@@ -1418,14 +1436,21 @@ class App {
 		}
 	}
 
-	Widget theme;
+	int fullscreen_on = 0;
+
+	Widget theme, sadd_theme, saddf_theme, dd_theme;
 	Widget exited, floating, minimized, title;
+	Widget file, edit, view, help;
+	Widget file_s, edit_s, view_s, help_s;
+	Widget file_open, file_open_new, file_open_recent, file_save, file_export;
+	Widget tooltip, cursor;
 	void UI_setup() {
 		glfwSetWindowAttrib(window, GLFW_DECORATED, GLFW_FALSE);
+		//glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
 
 		theme.set_border(0, 0., 0, 0.);
 		theme.set_pos(0, 200, 0, 200);
-		theme.set_alignment(5, 5, 2, 2);
+		theme.set_alignment(7, 7, 2, 2);
 		theme.text = std::string("the");
 		theme.alignment_horizontal_type = WIDGET_ALIGNMENT_RIGHT_H;
 		theme.alignment_vertical_type = WIDGET_ALIGNMENT_TOP_V;
@@ -1437,11 +1462,14 @@ class App {
 		// PRIO 1: window functions
 		exited = theme;
 		exited.text = std::string("X");
+		exited.wrap_text(&ui);
 		floating = theme;
 		floating.text = std::string("U");
+		floating.wrap_text(&ui);
 		floating.set_beside_widget(&exited);
 		minimized = theme;
 		minimized.text = std::string("_");
+		minimized.wrap_text(&ui);
 		minimized.set_beside_widget(&floating);
 		title = theme;
 		
@@ -1455,8 +1483,141 @@ class App {
 		title.state_type = WIDGET_STATE_LOCKED;
 
 		// Prio 2: self-aligning drop-down
+		sadd_theme.set_border(0, 0., 0, 0.);
+		sadd_theme.set_pos(0, 200, 0, 200);
+		sadd_theme.set_alignment(10, 10, 2, 2);
+		sadd_theme.text = std::string("the");
+		sadd_theme.alignment_horizontal_type = WIDGET_ALIGNMENT_LEFT_H;
+		sadd_theme.alignment_vertical_type = WIDGET_ALIGNMENT_TOP_V;
+		sadd_theme.border_alignment_type = WIDGET_BORDER_INSIDE;
+		sadd_theme.text_alignment_horizontal_type = WIDGET_TEXT_ALIGNMENT_CENTER_H;
+		sadd_theme.text_alignment_vertical_type = WIDGET_TEXT_ALIGNMENT_CENTER_V;
+		sadd_theme.wrap_text(&ui);
+
+		saddf_theme.set_border(0, 0., 0, 0.);
+		saddf_theme.set_pos(0, 200, 0, 200);
+		saddf_theme.set_alignment(10, 10, 2, 2);
+		saddf_theme.text = std::string("the");
+		saddf_theme.alignment_horizontal_type = WIDGET_ALIGNMENT_LEFT_H;
+		saddf_theme.alignment_vertical_type = WIDGET_ALIGNMENT_TOP_V;
+		saddf_theme.border_alignment_type = WIDGET_BORDER_INSIDE;
+		saddf_theme.text_alignment_horizontal_type = WIDGET_TEXT_ALIGNMENT_CENTER_H;
+		saddf_theme.text_alignment_vertical_type = WIDGET_TEXT_ALIGNMENT_CENTER_V;
+		saddf_theme.state_type = WIDGET_STATE_LOCKED;
+		saddf_theme.background_color.locked = vec4{0.1, 0.1, 0.1, 1.0};
+		saddf_theme.wrap_text(&ui);
+
+		// Prio 3: typisk dropdown
+		dd_theme.set_border(0, 0., 0, 0.);
+		dd_theme.set_pos(0, 200, 0, 20);
+		dd_theme.set_alignment(10, 10, 2, 2);
+		dd_theme.text = std::string("the");
+		dd_theme.alignment_horizontal_type = WIDGET_ALIGNMENT_LEFT_H;
+		dd_theme.alignment_vertical_type = WIDGET_ALIGNMENT_TOP_V;
+		dd_theme.border_alignment_type = WIDGET_BORDER_INSIDE;
+		dd_theme.text_alignment_horizontal_type = WIDGET_TEXT_ALIGNMENT_LEFT_H;
+		dd_theme.text_alignment_vertical_type = WIDGET_TEXT_ALIGNMENT_CENTER_V;
+		dd_theme.state_type = WIDGET_STATE_UNLOCKED;
+		dd_theme.background_color.passive = saddf_theme.background_color.locked;
 
 
+		{
+			file = sadd_theme;
+			file.text = std::string("file");
+			file.wrap_text(&ui);
+			if (!fullscreen_on) file.set_below_widget(&title);
+
+			file_s = saddf_theme;
+			file_s.text = std::string("file");
+			file_s.wrap_text(&ui);
+			if (!fullscreen_on) file_s.set_below_widget(&title);
+
+			file_open = dd_theme;
+			file_open.text = std::string("open");
+			file_open.set_below_widget(&file_s);
+
+			file_open_new = dd_theme;
+			file_open_new.text = std::string("open new");
+			file_open_new.set_beside_widget(&file_open);
+
+			file_open_recent = dd_theme;
+			file_open_recent.text = std::string("open_recent");
+			file_open_recent.set_below_widget(&file_open_new);
+
+			file_save = dd_theme;
+			file_save.text = std::string("save");
+			file_save.set_below_widget(&file_open);
+
+			file_export = dd_theme;
+			file_export.text = std::string("export");
+			file_export.set_below_widget(&file_save);
+		}
+
+		{
+			edit = sadd_theme;
+			edit.text = std::string("edit");
+			edit.wrap_text(&ui);
+			edit.set_beside_widget(&file);
+			if (edit.pos.right > width) edit.set_below_widget(&file);
+
+			edit_s = saddf_theme;
+			edit_s.text = std::string("edit");
+			edit_s.wrap_text(&ui);
+			edit_s.set_beside_widget(&file);
+			if (edit_s.pos.right > width) edit_s.set_below_widget(&file);
+			
+		}
+
+		{
+			view = sadd_theme;
+			view.text = std::string("view");
+			view.wrap_text(&ui);
+			view.set_beside_widget(&edit);
+			if (view.pos.right > width) view.set_below_widget(&edit);
+
+			view_s = saddf_theme;
+			view_s.text = std::string("view");
+			view_s.wrap_text(&ui);
+			view_s.set_beside_widget(&edit);
+			if (view_s.pos.right > width) view_s.set_below_widget(&edit);
+
+		}
+
+		{
+			help = sadd_theme;
+			help.text = std::string("help");
+			help.wrap_text(&ui);
+			help.set_beside_widget(&view);
+			if (help.pos.right > width) help.set_below_widget(&view);
+
+			help_s = saddf_theme;
+			help_s.text = std::string("help");
+			help_s.wrap_text(&ui);
+			help_s.set_beside_widget(&view);
+			if (help_s.pos.right > width) help_s.set_below_widget(&view);
+			
+		}
+		// Tooltip, cursor
+
+		tooltip = theme;
+		tooltip.text = std::string("Basic tooltip\nWherein text is and\nevery algorithm works as intended.");
+		tooltip.set_border(1, 1, 1, 1);
+		tooltip.background_color.passive = vec4{ 0.2, 0.2, 0.2, 0.6 };
+		tooltip.alignment_horizontal_type = WIDGET_ALIGNMENT_LEFT_H;
+		tooltip.text_alignment_horizontal_type = WIDGET_TEXT_ALIGNMENT_LEFT_H;
+		tooltip.state_type = WIDGET_STATE_FLIPPABLE;
+		tooltip.wrap_text(&ui);
+
+
+		cursor = theme;
+		cursor.text = std::string("^");
+		cursor.set_alignment(-4., 0., 0., 0.);
+		cursor.background_color.passive = vec4{ 0.2, 0.2, 0.2, 0.0 };
+		cursor.alignment_horizontal_type = WIDGET_ALIGNMENT_LEFT_H;
+		cursor.text_alignment_horizontal_type = WIDGET_TEXT_ALIGNMENT_LEFT_H;
+		cursor.text_alignment_vertical_type = WIDGET_TEXT_ALIGNMENT_TOP_V;
+		cursor.state_type = WIDGET_STATE_UNLOCKED;
+		cursor.wrap_text(&ui);
 	}
 
 	int double_click_bit = -1;
@@ -1475,69 +1636,186 @@ class App {
 	float timer0 = 0;
 	float timer_bit = 0;
 
-	UI_CODE UI_loop() {
-		ui.render_box(0, height, 0, height - theme.pos.up*2, width, height - theme.pos.up*2, width, height, theme.background_color.passive);
+	int menu_activated = 0;
+	int menu_file_activated = 0;
+	
+	int in_hit_box(float x, float y, float left, float right, float up, float down) {
+		return (left < x) & (x < right) & (down < (height - y)) & ((height - y) < up);
+	}
 
+	UI_CODE UI_loop() {
 		double mouse_x = 0.;
 		double mouse_y = 0.;
 		glfwGetCursorPos(window, &mouse_x, &mouse_y);
 		uint32_t lclick = glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT);
 		uint32_t rclick = glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT);
 
-		title.draw_widget(&ui, 0, 0, 0, 0);
-		if (exited.draw_widget(&ui, lclick, rclick, mouse_x, mouse_y) == WIDGET_RETURN_STATE_ACTIVATED) return UI_CODE_EXIT;
-		if (floating.draw_widget(&ui, lclick, rclick, mouse_x, mouse_y) == WIDGET_RETURN_STATE_ACTIVATED) {
-			if ((++floating_mode % 2)) {
-				glfwMaximizeWindow(window);
-			}
-			else {
-				glfwRestoreWindow(window);
-			}
-		}
-		if (minimized.draw_widget(&ui, lclick, rclick, mouse_x, mouse_y) == WIDGET_RETURN_STATE_ACTIVATED) glfwIconifyWindow(window);
-		
-		mouse_drag2 = mouse_drag1;
-		if (((0 < mouse_x) & (mouse_x < width) & ((height - theme.pos.up) < (height - mouse_y)) & ((height - mouse_y) < height) & lclick) | (mouse_drag0 & lclick)) {
-			if (mouse_drag1 == 0) {
-				mouse_drag0 = 0;
-				glfwGetWindowPos(window, &pos_x_drag1, &pos_y_drag1);
-				screen_x_drag1 = pos_x_drag1 + mouse_x;
-				screen_y_drag1 = pos_y_drag1 + mouse_y;
-				mouse_drag1 = 1;
+		if (fullscreen_on) {
+			ui.render_box(0, height, 0, height - help.pos.up, width, height - help.pos.up, width, height, theme.background_color.passive);
 
-				if (timer_bit == 0) {
-					timer0 = glfwGetTime();
-					timer_bit = 1;
+			mouse_drag2 = mouse_drag1;
+		}
+		else {
+			ui.render_box(0, height, 0, height - help.pos.up, width, height - help.pos.up, width, height, theme.background_color.passive);
+
+			title.draw_widget(&ui, 0, 0, 0, 0);
+			if (exited.draw_widget(&ui, lclick, rclick, mouse_x, mouse_y) == WIDGET_RETURN_STATE_RELEASED) return UI_CODE_EXIT;
+			if (floating.draw_widget(&ui, lclick, rclick, mouse_x, mouse_y) == WIDGET_RETURN_STATE_RELEASED) {
+				if ((++floating_mode % 2)) {
+					glfwMaximizeWindow(window);
 				}
 				else {
-					if (glfwGetTime() - timer0 < 0.22) {
-						if ((++floating_mode % 2)) {
-							glfwMaximizeWindow(window);
-						}
-						else {
-							glfwRestoreWindow(window);
-						}
-					}
-					timer_bit = 0;
+					glfwRestoreWindow(window);
 				}
 			}
+			if (minimized.draw_widget(&ui, lclick, rclick, mouse_x, mouse_y) == WIDGET_RETURN_STATE_RELEASED) glfwIconifyWindow(window);
 
-			if ((mouse_drag1 == 1) & (mouse_drag2 == 1)) {
-				mouse_drag0 = 1;
-				glfwGetWindowPos(window, &pos_x_drag2, &pos_y_drag2);
-				screen_x_drag2 = pos_x_drag2 + mouse_x;
-				screen_y_drag2 = pos_y_drag2 + mouse_y;
-				glfwSetWindowPos(window, pos_x_drag1 - screen_x_drag1 + screen_x_drag2, pos_y_drag1 - screen_y_drag1 + screen_y_drag2);
+			mouse_drag2 = mouse_drag1;
+
+			in_hit_box(mouse_x, mouse_y, 2, width - 2, height - 2, height - theme.pos.up - 2); // dragger
+			in_hit_box(mouse_x, mouse_y, 0, width, height, height - 2); // top
+			in_hit_box(mouse_x, mouse_y, 0, 2, height, 0); // left
+			in_hit_box(mouse_x, mouse_y, width - 2, width, height, 0); // right
+			in_hit_box(mouse_x, mouse_y, 0, width, 2, 0); // bottom
+			in_hit_box(mouse_x, mouse_y, 2, width - 2, height - theme.pos.up, 2); // none
+
+			if ((!in_hit_box(mouse_x, mouse_y, 2, width - 2, height - theme.pos.up, 2) & lclick) | ((mouse_drag0 != 0) & lclick)) {
+				if (mouse_drag1 == 0) {
+					mouse_drag0 = 0;
+					glfwGetWindowPos(window, &pos_x_drag1, &pos_y_drag1);
+					screen_x_drag1 = pos_x_drag1 + mouse_x;
+					screen_y_drag1 = pos_y_drag1 + mouse_y;
+					mouse_drag1 = 1;
+
+					if (timer_bit == 0) {
+						timer0 = glfwGetTime();
+						timer_bit = 1;
+					}
+					else {
+						if (glfwGetTime() - timer0 < 0.22) {
+							if ((++floating_mode % 2)) {
+								glfwMaximizeWindow(window);
+							}
+							else {
+								glfwRestoreWindow(window);
+							}
+						}
+						timer_bit = 0;
+					}
+				}
+
+				if (mouse_drag0 == 0) {
+					if (in_hit_box(mouse_x, mouse_y, 0, width, height - 2, height - theme.pos.up - 2))	mouse_drag0 = 1; // dragger
+					if (in_hit_box(mouse_x, mouse_y, 0, width, height, height - 2))						mouse_drag0 |= 2; // top
+					if (in_hit_box(mouse_x, mouse_y, 0, 2, height, 0))									mouse_drag0 |= 4; // left
+					if (in_hit_box(mouse_x, mouse_y, width - 2, width, height, 0))						mouse_drag0 |= 8; // right
+					if (in_hit_box(mouse_x, mouse_y, 0, width, 2, 0))									mouse_drag0 |= 16; // bottom
+				}
+
+				if ((mouse_drag1 == 1) & (mouse_drag2 == 1) & (mouse_drag0 & 1)) {
+					glfwGetWindowPos(window, &pos_x_drag2, &pos_y_drag2);
+					screen_x_drag2 = pos_x_drag2 + mouse_x;
+					screen_y_drag2 = pos_y_drag2 + mouse_y;
+					glfwSetWindowPos(window, pos_x_drag1 - screen_x_drag1 + screen_x_drag2, pos_y_drag1 - screen_y_drag1 + screen_y_drag2);
+				}
+				if(!(floating_mode % 2)){
+					if ((mouse_drag1 == 1) & (mouse_drag2 == 1) & (0 < (mouse_drag0 & 8))) {
+						glfwGetWindowPos(window, &pos_x_drag2, &pos_y_drag2);
+						screen_x_drag2 = pos_x_drag2 + mouse_x;
+						screen_y_drag2 = pos_y_drag2 + mouse_y;
+						glfwSetWindowSize(window, mouse_x, height);
+					}
+					if ((mouse_drag1 == 1) & (mouse_drag2 == 1) & (0 < (mouse_drag0 & 16))) {
+						glfwGetWindowPos(window, &pos_x_drag2, &pos_y_drag2);
+						screen_x_drag2 = pos_x_drag2 + mouse_x;
+						screen_y_drag2 = pos_y_drag2 + mouse_y;
+						glfwSetWindowSize(window, width, mouse_y);
+					}
+				}
+
+			}
+			else {
+				mouse_drag1 = 0;
+				mouse_drag0 = 0;
+			}
+			if (glfwGetTime() - timer0 > 0.22) {
+				timer_bit = 0;
 			}
 		}
-		else mouse_drag1 = 0;
-		if (glfwGetTime() - timer0 > 0.22) {
-			timer_bit = 0;
+
+
+		// det roliga kommer nedan :PPPPP fuck vilken clusterfuck av skit :SDASDPAOp
+		
+		WIDGET_RETURN_STATE file_state = file.draw_widget(&ui, lclick, rclick, mouse_x, mouse_y);
+		WIDGET_RETURN_STATE edit_state = edit.draw_widget(&ui, lclick, rclick, mouse_x, mouse_y);
+		WIDGET_RETURN_STATE view_state = view.draw_widget(&ui, lclick, rclick, mouse_x, mouse_y);
+		WIDGET_RETURN_STATE help_state = help.draw_widget(&ui, lclick, rclick, mouse_x, mouse_y);
+
+		if (menu_activated == 0) {
+			if (file_state == WIDGET_RETURN_STATE_PRESSED) menu_activated = 1;
+			if (edit_state == WIDGET_RETURN_STATE_PRESSED) menu_activated = 2;
+			if (view_state == WIDGET_RETURN_STATE_PRESSED) menu_activated = 3;
+			if (help_state == WIDGET_RETURN_STATE_PRESSED) menu_activated = 4;
+		}
+		else {
+			if ((menu_activated == 1) & (file_state == WIDGET_RETURN_STATE_PRESSED)) menu_activated = 0;
+			if (file_state == WIDGET_RETURN_STATE_HOVER) menu_activated = 1;
+			if ((menu_activated == 2) & (edit_state == WIDGET_RETURN_STATE_PRESSED)) menu_activated = 0;
+			if (edit_state == WIDGET_RETURN_STATE_HOVER) menu_activated = 2;
+			if ((menu_activated == 3) & (view_state == WIDGET_RETURN_STATE_PRESSED)) menu_activated = 0;
+			if (view_state == WIDGET_RETURN_STATE_HOVER) menu_activated = 3;
+			if ((menu_activated == 4) & (help_state == WIDGET_RETURN_STATE_PRESSED)) menu_activated = 0;
+			if (help_state == WIDGET_RETURN_STATE_HOVER) menu_activated = 4;
 		}
 
-		// det roliga kommer nedan :PPPPP
+		if (menu_activated == 1) {
+			file_s.draw_widget(&ui, 0, 0, 0, 0);
+			WIDGET_RETURN_STATE file_open_state = file_open.draw_widget(&ui, lclick, rclick, mouse_x, mouse_y);
+			WIDGET_RETURN_STATE file_save_state = file_save.draw_widget(&ui, lclick, rclick, mouse_x, mouse_y);
+
+			if (menu_file_activated == 0) {
+				if (file_open_state == WIDGET_RETURN_STATE_HOVER) menu_file_activated = 1;
+			}
+			else {
+				if (file_open_state == WIDGET_RETURN_STATE_HOVER) menu_file_activated = 1;
+				if (file_save_state == WIDGET_RETURN_STATE_HOVER) menu_file_activated = 0;
+			}
+
+			if (menu_file_activated == 1) {
+				WIDGET_RETURN_STATE file_open_new_state = file_open_new.draw_widget(&ui, lclick, rclick, mouse_x, mouse_y);
+				WIDGET_RETURN_STATE file_open_recent_state = file_open_recent.draw_widget(&ui, lclick, rclick, mouse_x, mouse_y);
+
+			}
+
+		}
+		else menu_file_activated = 0;
+
+		if (menu_activated == 2) {
+			edit_s.draw_widget(&ui, 0, 0, 0, 0);
+
+		}
+		if (menu_activated == 3) {
+			view_s.draw_widget(&ui, 0, 0, 0, 0);
+
+		}
+		if (menu_activated == 4) {
+			help_s.draw_widget(&ui, 0, 0, 0, 0);
+
+		}
 
 
+		
+
+		//tooltip.set_pos(mouse_x, 0, mouse_y, 0);
+		//tooltip.text = std::string("Basic tooltip\nWherein text is and\nevery algorithm works as intended.");
+		//tooltip.wrap_text(&ui);
+		//tooltip.draw_widget(&ui, 0, 0, 0, 0);
+		
+
+		//cursor.set_pos(mouse_x, 0, mouse_y - 4, 0);
+		//cursor.text = std::string("^");
+		//cursor.wrap_text(&ui);
+		//cursor.draw_widget(&ui, 0, 0, 0, 0);
 
 
 		return UI_CODE_NONE;
@@ -1612,6 +1890,16 @@ public:
 		double mouse_y = 0.;
 
 		while (!glfwWindowShouldClose(window)) {
+			{
+				double currentTime = glfwGetTime();
+				nbFrames++;
+				if (currentTime - lastTime >= 0.1) { // If last prinf() was more than 1 sec ago
+					// printf and reset timer
+					mspf = 100.0 / double(nbFrames);
+					nbFrames = 0;
+					lastTime += 0.1;
+				}
+			}
 			if (app_resize) size_fun();
 
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -1625,24 +1913,14 @@ public:
 			mat4 mv = matmat_mul(R, translation_matrix(x, y, zoom));
 			light = matvec_mul(mv, vec4{ 0., 0., 0., 1. });
 
-			{
-				double currentTime = glfwGetTime();
-				nbFrames++;
-				if (currentTime - lastTime >= 0.1) { // If last prinf() was more than 1 sec ago
-					// printf and reset timer
-					mspf = 100.0 / double(nbFrames);
-					nbFrames = 0;
-					lastTime += 0.1;
-				}
-			}
 
 			draw_bodies(light, pitch, yaw, x, y, zoom, &P);
 			
 			if (!(UI_SETUP_RATEv++ % UI_SETUP_RATE)) UI_setup();
 			if (UI_loop() == UI_CODE_EXIT) break;
 
-			glfwGetCursorPos(window, &mouse_x, &mouse_y);
 
+			glfwGetCursorPos(window, &mouse_x, &mouse_y);
 			if (glfwGetKey(window, GLFW_KEY_ESCAPE)) break;
 			if (glfwGetKey(window, GLFW_KEY_W)) { x -= sin(yaw); y -= cos(yaw); };
 			if (glfwGetKey(window, GLFW_KEY_S)) { x += sin(yaw); y += cos(yaw); };
@@ -1652,6 +1930,8 @@ public:
 			if (glfwGetKey(window, GLFW_KEY_DOWN))  pitch += .01;
 			if (glfwGetKey(window, GLFW_KEY_LEFT))  yaw -= .02;
 			if (glfwGetKey(window, GLFW_KEY_RIGHT)) yaw += .02;
+			if (glfwGetKey(window, GLFW_KEY_Q))  yaw -= .02;
+			if (glfwGetKey(window, GLFW_KEY_E)) yaw += .02;
 			if (glfwGetKey(window, GLFW_KEY_SPACE)) { x = 0, y = 0, zoom = -50.; };
 			if (glfwGetKey(window, GLFW_KEY_Z)) zoom -= 1.;
 			if (glfwGetKey(window, GLFW_KEY_X)) zoom += 1.;

@@ -19,57 +19,91 @@ c:\users\oscar\documents\github\multibody-sim\app\main.cpp(645): warning C4305: 
 c:\users\oscar\documents\github\multibody-sim\app\main.cpp(653): warning C4267: 'argument': conversion from 'size_t' to 'GLsizei', possible loss of data
 c:\users\oscar\documents\github\multibody-sim\app\main.cpp(866): warning C4305: 'argument': truncation from 'double' to 'float'
 c:\users\oscar\documents\github\multibody-sim\app\main.cpp(925): warning C4305: 'argument': truncation from 'double' to 'float'
-c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1029): warning C4005: 'COLOR_BLACK': macro redefinition
-  c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1012): note: see previous definition of 'COLOR_BLACK'
-c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1065): warning C4305: 'initializing': truncation from 'double' to 'float'
-c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1134): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1032): warning C4005: 'COLOR_BLACK': macro redefinition
+  c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1015): note: see previous definition of 'COLOR_BLACK'
+c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1067): warning C4305: 'initializing': truncation from 'double' to 'float'
 c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1136): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
 c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1138): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
 c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1140): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
-c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1183): warning C4554: '&': check operator precedence for possible error; use parentheses to clarify precedence
+c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1142): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
 c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1199): warning C4554: '&': check operator precedence for possible error; use parentheses to clarify precedence
-c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1246): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
-c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1249): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
-c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1260): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
-c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1263): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
-c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1299): warning C4305: 'initializing': truncation from 'double' to 'float'
-c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1468): warning C4244: 'initializing': conversion from 'double' to 'int', possible loss of data
-c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1469): warning C4244: 'initializing': conversion from 'double' to 'int', possible loss of data
-c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1470): warning C4244: 'initializing': conversion from 'double' to 'int', possible loss of data
-c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1471): warning C4244: 'initializing': conversion from 'double' to 'int', possible loss of data
-c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1319): warning C4305: 'initializing': truncation from 'double' to 'float'
-c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1320): warning C4305: 'initializing': truncation from 'double' to 'float'
-c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1321): warning C4305: 'initializing': truncation from 'double' to 'float'
-c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1322): warning C4305: 'initializing': truncation from 'double' to 'float'
-c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1324): warning C4305: 'initializing': truncation from 'double' to 'float'
-c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1339): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1347): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1355): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1363): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1368): warning C4244: '+=': conversion from 'double' to 'float', possible loss of data
-c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1369): warning C4244: '+=': conversion from 'double' to 'float', possible loss of data
-c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1370): warning C4244: '+=': conversion from 'double' to 'float', possible loss of data
-c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1381): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
-c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1488): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1489): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1497): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1504): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
-c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1505): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
-c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1509): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
-c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1529): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
-c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1530): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
-c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1531): warning C4244: 'argument': conversion from 'float' to 'int', possible loss of data
-c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1549): warning C4244: '=': conversion from 'int' to 'float', possible loss of data
-c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1550): warning C4244: '=': conversion from 'int' to 'float', possible loss of data
-c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1551): warning C4244: 'argument': conversion from 'float' to 'GLsizei', possible loss of data
-c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1559): warning C4244: 'argument': conversion from 'float' to 'int', possible loss of data
-c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1617): warning C4305: 'argument': truncation from 'double' to 'GLclampf'
-c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1619): warning C4305: 'argument': truncation from 'double' to 'float'
-c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1619): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1632): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
-c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1650): warning C4305: '-=': truncation from 'double' to 'float'
-c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1651): warning C4305: '+=': truncation from 'double' to 'float'
-c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1652): warning C4305: '-=': truncation from 'double' to 'float'
-c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1653): warning C4305: '+=': truncation from 'double' to 'float'
-c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1603): warning C4101: 'mv': unreferenced local variable
+c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1215): warning C4554: '&': check operator precedence for possible error; use parentheses to clarify precedence
+c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1218): warning C4554: '&': check operator precedence for possible error; use parentheses to clarify precedence
+c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1266): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1269): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1280): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1283): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1317): warning C4305: 'initializing': truncation from 'double' to 'float'
+c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1629): warning C4244: 'initializing': conversion from 'double' to 'int', possible loss of data
+c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1630): warning C4244: 'initializing': conversion from 'double' to 'int', possible loss of data
+c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1631): warning C4244: 'initializing': conversion from 'double' to 'int', possible loss of data
+c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1632): warning C4244: 'initializing': conversion from 'double' to 'int', possible loss of data
+c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1337): warning C4305: 'initializing': truncation from 'double' to 'float'
+c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1338): warning C4305: 'initializing': truncation from 'double' to 'float'
+c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1339): warning C4305: 'initializing': truncation from 'double' to 'float'
+c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1340): warning C4305: 'initializing': truncation from 'double' to 'float'
+c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1342): warning C4305: 'initializing': truncation from 'double' to 'float'
+c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1357): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1365): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1373): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1381): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1386): warning C4244: '+=': conversion from 'double' to 'float', possible loss of data
+c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1387): warning C4244: '+=': conversion from 'double' to 'float', possible loss of data
+c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1388): warning C4244: '+=': conversion from 'double' to 'float', possible loss of data
+c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1399): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
+c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1507): warning C4305: 'initializing': truncation from 'double' to 'float'
+c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1605): warning C4305: 'initializing': truncation from 'double' to 'float'
+c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1615): warning C4305: 'initializing': truncation from 'double' to 'float'
+c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1662): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1663): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1671): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1675): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1676): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1677): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1678): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1679): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1680): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1682): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1686): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1687): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1691): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1708): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1709): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1710): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1711): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1712): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1718): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1719): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1720): warning C4244: 'argument': conversion from 'float' to 'int', possible loss of data
+c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1725): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1726): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1727): warning C4244: 'argument': conversion from 'float' to 'int', possible loss of data
+c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1727): warning C4244: 'argument': conversion from 'double' to 'int', possible loss of data
+c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1731): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1732): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1733): warning C4244: 'argument': conversion from 'double' to 'int', possible loss of data
+c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1733): warning C4244: 'argument': conversion from 'float' to 'int', possible loss of data
+c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1750): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1751): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1752): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1753): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1774): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1775): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1786): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1787): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1829): warning C4244: '=': conversion from 'int' to 'float', possible loss of data
+c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1830): warning C4244: '=': conversion from 'int' to 'float', possible loss of data
+c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1831): warning C4244: 'argument': conversion from 'float' to 'GLsizei', possible loss of data
+c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1839): warning C4244: 'argument': conversion from 'float' to 'int', possible loss of data
+c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1899): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1907): warning C4305: 'argument': truncation from 'double' to 'GLclampf'
+c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1909): warning C4305: 'argument': truncation from 'double' to 'float'
+c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1909): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1930): warning C4305: '-=': truncation from 'double' to 'float'
+c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1931): warning C4305: '+=': truncation from 'double' to 'float'
+c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1932): warning C4305: '-=': truncation from 'double' to 'float'
+c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1933): warning C4305: '+=': truncation from 'double' to 'float'
+c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1934): warning C4305: '-=': truncation from 'double' to 'float'
+c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1935): warning C4305: '+=': truncation from 'double' to 'float'
+c:\users\oscar\documents\github\multibody-sim\app\main.cpp(1883): warning C4101: 'mv': unreferenced local variable
   mbody.vcxproj -> C:\Users\oscar\Documents\GitHub\Multibody-sim\x64\Debug\mbody.exe
